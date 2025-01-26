@@ -7,8 +7,10 @@
 #    return "<h1>Hello motherfacker !!!</h1>"
 
 from flask import Flask, request
+from flask_cors import CORS
 
 app = Flask("MyFlaskApp")
+CORS(app)  # Разрешаем CORS для всех источников
 
 @app.route("/", methods=["GET", "POST"])
 def welcome():
