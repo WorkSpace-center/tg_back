@@ -11,12 +11,12 @@ from flask_jwt_extended import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__)
+app = Flask("MyFlaskApp")
 CORS(app)
 
 # Подключение к удаленной базе данных (на сервере Amvera.ru)
 app.config["SQLALCHEMY_DATABASE_URI"] = (
-    "postgresql://username:password@amvera.ru:5432/database"
+    "postgresql://admin:securepassword@db.amvera.ru:5432/mydatabase"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"] = "your_secret_key"
@@ -24,6 +24,7 @@ app.config["JWT_SECRET_KEY"] = "your_secret_key"
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
 
+name_2 = []
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
@@ -53,7 +54,7 @@ def register():
         first_name=data["first_name"],
         last_name=data["last_name"],
         password=hashed_password,
-        hash=generate_password_hash(data["username"]),
+        hash=data["hash"],
     )
 
     try:
