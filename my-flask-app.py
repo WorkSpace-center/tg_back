@@ -1,12 +1,5 @@
-# from flask import Flask
-
-# app = Flask("MyFlaskApp")
-
-# @app.route("/", methods=["GET"])
-# def welcome():
-#    return "<h1>Hello motherfacker !!!</h1>"
-
-from flask import Flask, request
+# версия для отправки возврата данных на офронтенд
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask("MyFlaskApp")
@@ -16,13 +9,21 @@ CORS(app)  # Разрешаем CORS для всех источников
 @app.route("/", methods=["GET", "POST"])
 def welcome():
     if request.method == "POST":
-        # Получите данные из POST-запроса
+        # Получаем данные из POST-запроса
         data = request.json  # Если данные отправляются в формате JSON
-        # Извлекаем нужные данные (например, значение по ключу 'message')
-        message = data.get("message", "No message provided")
-        return {"message": "Data received", "data": data}, 200
+
+        # Достаём только нужные поля, если их нет — ставим пустую строку
+        response_data = {
+            "name": data.get("name", ""),
+            "username": data.get("username", ""),
+            "first_name": data.get("first_name", ""),
+            "last_name": data.get("last_name", ""),
+        }
+
+        return jsonify(response_data), 200  # Отправляем JSON-ответ
+
     return "<h1>Hello motherfacker !!!</h1>"
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
