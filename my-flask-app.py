@@ -14,7 +14,7 @@ def welcome():
 
         # Достаём только нужные поля, если их нет — ставим пустую строку
         response_data = {
-            "name": data.get("name", ""),
+            # "name": data.get("name", ""),
             "username": data.get("username", ""),
             "first_name": data.get("first_name", ""),
             "last_name": data.get("last_name", ""),
