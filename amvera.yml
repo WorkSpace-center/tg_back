@@ -8,5 +8,5 @@ build:
   requirementsPath: requirements.txt
 run:
   command: gunicorn --bind 0.0.0.0:80 my-flask-app:app
-  persistenceMount: /data
+  persistenceMount: /data/database.db
   containerPort: 80
