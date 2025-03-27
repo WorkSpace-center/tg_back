@@ -1,18 +1,30 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from database import db, User  # Импортируем БД и модель
+from flask_sqlalchemy import SQLAlchemy
+import os
 
 app = Flask("MyFlaskApp")
 CORS(app)  # Разрешаем CORS для всех источников
 
 # Подключаем SQLite
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///database.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Привязываем БД к Flask-приложению
-db.init_app(app)
+db = SQLAlchemy(app)
 
-# Создание таблиц при запуске
+
+# Модель пользователя
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    first_name = db.Column(db.String(50))
+    last_name = db.Column(db.String(50))
+
+
+# Создание таблиц
 with app.app_context():
     db.create_all()
 
@@ -20,9 +32,17 @@ with app.app_context():
 @app.route("/", methods=["GET", "POST"])
 def welcome():
     if request.method == "POST":
-        data = request.json  # Получаем JSON
+        data = request.json
 
-        # Создаем пользователя
+        # Проверяем, есть ли уже пользователь с таким username
+        existing_user = User.query.filter_by(username=data.get("username")).first()
+        if existing_user:
+            return (
+                jsonify({"message": "User already exists (такой мудак уже есть)"}),
+                409,
+            )  # 409 - конфликт данных
+
+        # Создаем нового пользователя
         new_user = User(
             name=data.get("name", ""),
             username=data.get("username", ""),
@@ -34,7 +54,7 @@ def welcome():
         db.session.add(new_user)
         db.session.commit()
 
-        return jsonify({"message": "User created"}), 201
+        return jsonify({"message": "User created (Дабавил нового мудака)"}), 201
 
     # Если GET-запрос — отдаем всех пользователей
     users = User.query.all()
