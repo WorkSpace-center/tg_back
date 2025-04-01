@@ -6,9 +6,8 @@ import os
 app = Flask("MyFlaskApp")
 CORS(app)  # Разрешаем CORS для всех источников
 
-# Подключаем SQLite
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, "database.db")
+# Подключаем SQLite, указывая путь к базе данных на сервере
+DB_PATH = "/data/my_database.db"  # Указываем путь к файлу БД на сервере
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -38,7 +37,9 @@ def welcome():
         existing_user = User.query.filter_by(username=data.get("username")).first()
         if existing_user:
             return (
-                jsonify({"message": "User already exists (такой мудак уже есть)"}),
+                jsonify(
+                    {"message": "User already exists (такой пользователь уже есть)"}
+                ),
                 409,
             )  # 409 - конфликт данных
 
@@ -54,7 +55,7 @@ def welcome():
         db.session.add(new_user)
         db.session.commit()
 
-        return jsonify({"message": "User created (Дабавил нового мудака)"}), 201
+        return jsonify({"message": "User created (Добавлен новый пользователь)"}), 201
 
     # Если GET-запрос — отдаем всех пользователей
     users = User.query.all()
