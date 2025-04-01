@@ -12,7 +12,7 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "pass")  # Пароль
 MYSQL_HOST = os.getenv(
     "MYSQL_HOST", "amvera-evst-run-database-tg"
 )  # Хост БД (или IP сервера)
-MYSQL_DB = os.getenv("MYSQL_DB", "database-tg")  # Название БД
+MYSQL_DB = os.getenv("MYSQL_DB", "database tg")  # Название БД
 
 app.config["SQLALCHEMY_DATABASE_URI"] = (
     f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}?charset=utf8mb4"
