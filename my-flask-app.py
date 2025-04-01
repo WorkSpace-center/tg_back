@@ -9,12 +9,14 @@ CORS(app)  # Разрешаем CORS для всех источников
 # Подключаем MySQL
 MYSQL_USER = os.getenv("MYSQL_USER", "root")  # Имя пользователя
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "pass")  # Пароль
-MYSQL_HOST = os.getenv("MYSQL_HOST", "80")  # Хост БД (или IP сервера)
+MYSQL_HOST = os.getenv(
+    "MYSQL_HOST", "amvera-evst-run-database-tg"
+)  # Хост БД (или IP сервера)
 MYSQL_DB = os.getenv("MYSQL_DB", "database-tg")  # Название БД
 
-app.config[
-    "SQLALCHEMY_DATABASE_URI"
-] = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}?charset=utf8mb4"
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}?charset=utf8mb4"
+)
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -44,7 +46,9 @@ def welcome():
         existing_user = User.query.filter_by(username=data.get("username")).first()
         if existing_user:
             return (
-                jsonify({"message": "User already exists (такой пользователь уже есть)"}),
+                jsonify(
+                    {"message": "User already exists (такой пользователь уже есть)"}
+                ),
                 409,
             )  # 409 - конфликт данных
 
