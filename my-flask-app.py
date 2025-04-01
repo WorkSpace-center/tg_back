@@ -6,9 +6,16 @@ import os
 app = Flask("MyFlaskApp")
 CORS(app)  # Разрешаем CORS для всех источников
 
-# Подключаем SQLite, указывая путь к базе данных на сервере
-DB_PATH = "/data/my_database.db"  # Указываем путь к файлу БД на сервере
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+# Подключаем MySQL
+MYSQL_USER = os.getenv("MYSQL_USER", "root")  # Имя пользователя
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "pass")  # Пароль
+MYSQL_HOST = os.getenv("MYSQL_HOST", "80")  # Хост БД (или IP сервера)
+MYSQL_DB = os.getenv("MYSQL_DB", "database-tg")  # Название БД
+
+app.config[
+    "SQLALCHEMY_DATABASE_URI"
+] = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}?charset=utf8mb4"
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -37,9 +44,7 @@ def welcome():
         existing_user = User.query.filter_by(username=data.get("username")).first()
         if existing_user:
             return (
-                jsonify(
-                    {"message": "User already exists (такой пользователь уже есть)"}
-                ),
+                jsonify({"message": "User already exists (такой пользователь уже есть)"}),
                 409,
             )  # 409 - конфликт данных
 
