@@ -24,8 +24,8 @@ app = Flask("MyFlaskApp")
 CORS(app)
 
 # Настройки подключения к БД
-MYSQL_USER = os.getenv("MYSQL_USER")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+MYSQL_USER = os.getenv("MYSQL_USER", "root")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "pass")
 MYSQL_HOST = os.getenv("MYSQL_HOST", "amvera-evst-run-database-tg")
 MYSQL_DB = os.getenv("MYSQL_DB", "database tg")
 
