@@ -1,14 +1,32 @@
+import os
+import json
+import time
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-import os
+from telegram import (
+    Bot,
+    Update,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
+from telegram.ext import Dispatcher, MessageHandler, Filters, Updater
 
+# Загрузка переменных окружения
+TOKEN = os.getenv("TG_BOT_TOKEN")
+
+# Telegram Web App URL
+WEB_APP_URL = "https://tg-super-app.netlify.app/"
+
+# Flask App Init
 app = Flask("MyFlaskApp")
-CORS(app)  # Разрешаем CORS для всех источников
+CORS(app)
 
-# Подключаем MySQL
-MYSQL_USER = os.getenv("MYSQL_USER", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "pass")
+# Настройки подключения к БД
+MYSQL_USER = os.getenv("MYSQL_USER")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
 MYSQL_HOST = os.getenv("MYSQL_HOST", "amvera-evst-run-database-tg")
 MYSQL_DB = os.getenv("MYSQL_DB", "database tg")
 
@@ -18,6 +36,11 @@ app.config["SQLALCHEMY_DATABASE_URI"] = (
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
+
+# Telegram Bot Init
+bot = Bot(token=TOKEN)
+updater = Updater(bot=bot, use_context=True)
+dispatcher = updater.dispatcher
 
 
 # Модель пользователя
@@ -40,7 +63,7 @@ class Order(db.Model):
     description = db.Column(db.String(255), nullable=True)
     quantity = db.Column(db.Integer, nullable=False)
     price = db.Column(db.Float, nullable=False)
-    amount = db.Column(db.Float, nullable=False)  # quantity * price
+    amount = db.Column(db.Float, nullable=False)
 
 
 # Создание таблиц
@@ -48,20 +71,62 @@ with app.app_context():
     db.create_all()
 
 
+# Обработка Telegram сообщений
+def handle_message(update: Update, context):
+    message = update.message
+    chat_id = message.chat_id
+    text = message.text
+
+    if text == "/start":
+        keyboard = ReplyKeyboardMarkup(
+            [
+                [
+                    KeyboardButton(
+                        "Заполнить форму!!", web_app={"url": f"{WEB_APP_URL}/form"}
+                    )
+                ]
+            ],
+            resize_keyboard=True,
+        )
+        bot.send_message(
+            chat_id, "Ниже появится кнопка, заполни форму!!!", reply_markup=keyboard
+        )
+
+        inline_keyboard = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Сделать заказ", web_app={"url": WEB_APP_URL})]]
+        )
+        bot.send_message(
+            chat_id,
+            "Заходи в наш интернет магазин по кнопке ниже",
+            reply_markup=inline_keyboard,
+        )
+
+    elif message.web_app_data and message.web_app_data.data:
+        try:
+            data = json.loads(message.web_app_data.data)
+            bot.send_message(chat_id, "Спасибо за обратную связь!")
+            bot.send_message(chat_id, f"Ваша страна: {data.get('country')}")
+            bot.send_message(chat_id, f"Ваша улица: {data.get('street')}")
+            time.sleep(3)
+            bot.send_message(chat_id, "Всю информацию вы получите в этом чате")
+        except Exception as e:
+            print(e)
+
+
+# Регистрируем обработчик
+dispatcher.add_handler(
+    MessageHandler(Filters.text | Filters.web_app_data, handle_message)
+)
+
+
+# Роуты Flask
 @app.route("/", methods=["GET", "POST"])
 def welcome():
     if request.method == "POST":
         data = request.json
-
-        # Проверяем, есть ли уже пользователь с таким username
         existing_user = User.query.filter_by(username=data.get("username")).first()
         if existing_user:
-            return (
-                jsonify(
-                    {"message": "User already exists (такой пользователь уже есть)"}
-                ),
-                409,
-            )
+            return jsonify({"message": "User already exists"}), 409
 
         new_user = User(
             name=data.get("name", ""),
@@ -69,13 +134,10 @@ def welcome():
             first_name=data.get("first_name"),
             last_name=data.get("last_name"),
         )
-
         db.session.add(new_user)
         db.session.commit()
+        return jsonify({"message": "User created"}), 201
 
-        return jsonify({"message": "User created (Добавлен новый пользователь)"}), 201
-
-    # GET-запрос — отдаем всех пользователей
     users = User.query.all()
     users_data = [
         {
@@ -92,7 +154,6 @@ def welcome():
 @app.route("/orders", methods=["POST"])
 def create_order():
     data = request.json
-
     try:
         quantity = int(data.get("quantity", 0))
         price = float(data.get("price", 0))
@@ -109,12 +170,9 @@ def create_order():
             price=price,
             amount=amount,
         )
-
         db.session.add(new_order)
         db.session.commit()
-
-        return jsonify({"message": "Order created (Заказ добавлен)"}), 201
-
+        return jsonify({"message": "Order created"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -126,8 +184,8 @@ def get_orders():
         {
             "username": o.username,
             "order_number": o.order_number,
-            "order_date": o.order_date.strftime("%Y-%m-%d") if o.order_date else None,
-            "order_time": o.order_time.strftime("%H:%M:%S") if o.order_time else None,
+            "order_date": o.order_date,
+            "order_time": o.order_time,
             "article": o.article,
             "description": o.description,
             "quantity": o.quantity,
@@ -139,5 +197,32 @@ def get_orders():
     return jsonify(orders_data), 200
 
 
+@app.route("/web-data", methods=["POST"])
+def web_data():
+    data = request.json
+    query_id = data.get("queryId")
+    products = data.get("products", [])
+    total_price = data.get("totalPrice", 0)
+
+    try:
+        product_titles = ", ".join([item["title"] for item in products])
+        bot.answer_web_app_query(
+            query_id=query_id,
+            result={
+                "type": "article",
+                "id": query_id,
+                "title": "Успешная покупка",
+                "input_message_content": {
+                    "message_text": f"Поздравляю с покупкой, вы приобрели товар на сумму {total_price}, {product_titles}"
+                },
+            },
+        )
+        return jsonify({}), 200
+    except Exception as e:
+        print(e)
+        return jsonify({}), 500
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    updater.start_polling()
+    app.run(debug=True, port=8001)
