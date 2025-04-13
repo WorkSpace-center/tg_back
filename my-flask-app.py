@@ -17,7 +17,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filte
 TOKEN = os.getenv("TG_BOT_TOKEN")
 
 # Telegram Web App URL
-WEB_APP_URL = "https://tg-super-app.netlify.app/"
+WEB_APP_URL = os.getenv("WEB_APP_URL")
 
 # Flask App Init
 app = Flask("MyFlaskApp")
