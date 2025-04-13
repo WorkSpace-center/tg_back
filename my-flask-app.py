@@ -5,14 +5,13 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from telegram import (
-    Bot,
     Update,
     KeyboardButton,
     ReplyKeyboardMarkup,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
-from telegram.ext import Dispatcher, MessageHandler, Filters, Updater
+from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 
 # Загрузка переменных окружения
 TOKEN = os.getenv("TG_BOT_TOKEN")
@@ -36,11 +35,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = (
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
-
-# Telegram Bot Init
-bot = Bot(token=TOKEN)
-updater = Updater(bot=bot, use_context=True)
-dispatcher = updater.dispatcher
 
 
 # Модель пользователя
@@ -72,9 +66,11 @@ with app.app_context():
 
 
 # Обработка Telegram сообщений
-def handle_message(update: Update, context):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
-    chat_id = message.chat_id
+    if not message:
+        return
+    chat_id = message.chat.id
     text = message.text
 
     if text == "/start":
@@ -88,35 +84,39 @@ def handle_message(update: Update, context):
             ],
             resize_keyboard=True,
         )
-        bot.send_message(
-            chat_id, "Ниже появится кнопка, заполни форму!!!", reply_markup=keyboard
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="Ниже появится кнопка, заполни форму!!!",
+            reply_markup=keyboard,
         )
 
         inline_keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("Сделать заказ", web_app={"url": WEB_APP_URL})]]
         )
-        bot.send_message(
-            chat_id,
-            "Заходи в наш интернет магазин по кнопке ниже",
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="Заходи в наш интернет магазин по кнопке ниже",
             reply_markup=inline_keyboard,
         )
 
     elif message.web_app_data and message.web_app_data.data:
         try:
             data = json.loads(message.web_app_data.data)
-            bot.send_message(chat_id, "Спасибо за обратную связь!")
-            bot.send_message(chat_id, f"Ваша страна: {data.get('country')}")
-            bot.send_message(chat_id, f"Ваша улица: {data.get('street')}")
+            await context.bot.send_message(
+                chat_id=chat_id, text="Спасибо за обратную связь!"
+            )
+            await context.bot.send_message(
+                chat_id=chat_id, text=f"Ваша страна: {data.get('country')}"
+            )
+            await context.bot.send_message(
+                chat_id=chat_id, text=f"Ваша улица: {data.get('street')}"
+            )
             time.sleep(3)
-            bot.send_message(chat_id, "Всю информацию вы получите в этом чате")
+            await context.bot.send_message(
+                chat_id=chat_id, text="Всю информацию вы получите в этом чате"
+            )
         except Exception as e:
             print(e)
-
-
-# Регистрируем обработчик
-dispatcher.add_handler(
-    MessageHandler(Filters.text | Filters.web_app_data, handle_message)
-)
 
 
 # Роуты Flask
@@ -206,6 +206,7 @@ def web_data():
 
     try:
         product_titles = ", ".join([item["title"] for item in products])
+        bot = application.bot
         bot.answer_web_app_query(
             query_id=query_id,
             result={
@@ -224,5 +225,9 @@ def web_data():
 
 
 if __name__ == "__main__":
-    updater.start_polling()
+    application = ApplicationBuilder().token(TOKEN).build()
+    application.add_handler(
+        MessageHandler(filters.TEXT | filters.WEB_APP_DATA, handle_message)
+    )
+    application.run_polling()
     app.run(debug=True, port=8001)
