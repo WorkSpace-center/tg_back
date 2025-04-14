@@ -78,7 +78,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [
                 [
                     KeyboardButton(
-                        "Заполнить форму!!", web_app={"url": f"{WEB_APP_URL}/form"}
+                        "Заполнить форму, мудак!!!", web_app={"url": f"{WEB_APP_URL}/form"}
                     )
                 ]
             ],
